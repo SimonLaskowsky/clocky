@@ -1,29 +1,22 @@
-# focus-booster-app
+# Clocky
 
-This template should help get you started developing with Vue 3 in Vite.
+A desktop focus timer (Pomodoro-style) built with Electron and Vue 3.
 
-## Recommended IDE Setup
-
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vitejs.dev/config/).
-
-## Project Setup
+## Setup
 
 ```sh
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+## Development
 
 ```sh
-npm run dev
+npm run build:vue      # Build Vue frontend
+npm run electron:start # Run the Electron app
 ```
 
-### Compile and Minify for Production
+## Build for Distribution
 
 ```sh
-npm run build
+npm run build          # Build Vue + Electron installer
 ```

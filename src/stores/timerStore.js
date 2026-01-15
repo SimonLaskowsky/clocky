@@ -6,6 +6,7 @@ export const useTimerStore = defineStore({
     timerPause: false,
     areNotificationsOn: true,
     workTime: 1500, // Default work time in seconds (25 minutes)
+    selectedSound: "metal-pipe", // Options: "metal-pipe", "system", "none"
   }),
   actions: {
     togglePause() {
@@ -21,6 +22,9 @@ export const useTimerStore = defineStore({
       if (typeof newTime === 'number' && !isNaN(newTime) && newTime > 0) {
         this.workTime = newTime;
       }
+    },
+    setSound(sound) {
+      this.selectedSound = sound;
     },
   },
 });

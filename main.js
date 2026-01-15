@@ -80,14 +80,34 @@ ipcMain.on("request-notification-permission", (event) => {
   event.reply("notification-permission-granted");
 });
 
-ipcMain.on("send-notification", (event, title, body) => {
+ipcMain.on("send-notification", (event, title, body, soundType = "metal-pipe") => {
   if (notificationsPermissionGranted) {
+    const useSystemSound = soundType === "system";
     const notification = new Notification({
       title,
       body,
-      silent: true,
+      silent: !useSystemSound,
     });
+
+    if (soundType === "metal-pipe") {
+      sound.play(soundFilePath);
+    }
+    // "system" uses native notification sound, "none" is silent
+
+    notification.show();
+  }
+});
+
+ipcMain.on("preview-sound", (event, soundType) => {
+  if (soundType === "metal-pipe") {
     sound.play(soundFilePath);
+  } else if (soundType === "system") {
+    // Play a short system beep by showing a quick notification
+    const notification = new Notification({
+      title: "Sound Preview",
+      body: "System notification sound",
+      silent: false,
+    });
     notification.show();
   }
 });

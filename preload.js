@@ -26,8 +26,8 @@ contextBridge.exposeInMainWorld("api", {
 contextBridge.exposeInMainWorld("electron", {
   requestNotificationPermission: () =>
     ipcRenderer.send("request-notification-permission"),
-  sendNotification: (title, body) =>
-    ipcRenderer.send("send-notification", title, body),
+  sendNotification: (title, body, soundType = "metal-pipe") =>
+    ipcRenderer.send("send-notification", title, body, soundType),
   onNotificationPermissionGranted: (func) =>
     ipcRenderer.on("notification-permission-granted", (event) => func()),
 });
