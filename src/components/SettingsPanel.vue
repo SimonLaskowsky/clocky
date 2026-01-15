@@ -1,193 +1,296 @@
 <script setup>
 import { ref } from 'vue';
+import { useTimerStore } from "@/stores/timerStore";
 const { ipcRenderer } = window.api;
 
-const timerValue = ref(1500); // Domyślny czas pracy w sekundach (25 minut)
-const isTransparent = ref(false); // Domyślnie transparentność wyłączona
+const emit = defineEmits(['close']);
+const timerStore = useTimerStore();
+const timeInput = ref(null);
+const saved = ref(false);
 
-// Funkcja do zapisywania nowego czasu
 const saveTime = () => {
-  const newTime = parseInt(document.getElementById('time-input').value, 10);
+  const newTime = parseInt(timeInput.value.value, 10);
   if (!isNaN(newTime) && newTime > 0) {
-    timerValue.value = newTime;
-    ipcRenderer.send('start-timer', timerValue.value); // Opcjonalnie: uruchom timer od razu
+    timerStore.setWorkTime(newTime);
+    ipcRenderer.send('start-timer', timerStore.workTime);
+    saved.value = true;
+    setTimeout(() => {
+      saved.value = false;
+    }, 2000);
   }
-};
-
-// Funkcja do przełączania transparentności
-const toggleTransparency = () => {
-  isTransparent.value = !isTransparent.value;
-  ipcRenderer.send('toggle-transparency');
 };
 </script>
 
 <template>
+  <div class="settings-overlay" @click.self="emit('close')">
     <div class="settings-panel">
-    <h2>Settings</h2>
-    <!-- <div class="setting">
-      <button @click="toggleTransparency">
-        {{ isTransparent ? 'Wyłącz transparentność' : 'Włącz transparentność' }}
-      </button>
-    </div> -->
-    <div class="info"> 
-        
-        <p>
-            <span style="font-weight: 600;">A simple timer with break functionality:</span>
-            <span style="white-space: pre-line; margin-top: 3px; margin-bottom: 3px;">⌛Counts down a set time (default 25 minutes).</span>
-            <span style="white-space: pre-line; margin-top: 3px; margin-bottom: 3px;">📩Sends a notification for a break when the time is up.</span>
-            Listens for 5 seconds:
-            <ul>
-                <li>If you step away, it switches to "Break" mode and waits for your return to restart.</li>
-                <li>If you stay, it automatically restarts the countdown.</li>
-            </ul>
-            Manual pause available via buttons at the top.
-        </p>
-    </div>
-    <div class="setting">
-        <div class="time-setting">
-            <label for="time-input">Work time:</label>
-            <input id="time-input" type="number" :value="timerValue" min="1" />
+      <header>
+        <div class="header-content">
+          <h1>Clocky</h1>
+          <span class="version">Focus Timer</span>
         </div>
-        <button @click="saveTime">Save</button>
-    </div>
-    <!-- <div class="setting">
-        <div class="time-setting">
-            <label for="time-input">Dźwięk powiadomienia</label>
-            <input id="time-input" type="number" :value="timerValue" min="1" />
+        <button class="close-btn" @click="emit('close')" title="Close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </header>
+
+      <section class="card">
+        <h3>How it works</h3>
+        <div class="feature-list">
+          <div class="feature">
+            <span class="feature-icon">⏱️</span>
+            <p>Counts down your focus time (default 25 min)</p>
+          </div>
+          <div class="feature">
+            <span class="feature-icon">🔔</span>
+            <p>Notifies you when it's time for a break</p>
+          </div>
+          <div class="feature">
+            <span class="feature-icon">🔄</span>
+            <p>Auto-restarts when you return from break</p>
+          </div>
         </div>
-    </div> -->
-    <button class="close-btn" @click="$emit('close')">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <line x1="6" y1="6" x2="18" y2="18" stroke="#333" stroke-width="1" stroke-linecap="round"/>
-        <line x1="6" y1="18" x2="18" y2="6" stroke="#333" stroke-width="1" stroke-linecap="round"/>
-      </svg>
-    </button>
+      </section>
+
+      <section class="card">
+        <h3>Focus Duration</h3>
+        <div class="time-input-group">
+          <div class="input-wrapper">
+            <input
+              ref="timeInput"
+              type="number"
+              :value="timerStore.workTime"
+              min="60"
+              step="60"
+            />
+            <span class="input-suffix">seconds</span>
+          </div>
+          <button class="save-btn" :class="{ saved }" @click="saveTime">
+            {{ saved ? '✓ Saved' : 'Save' }}
+          </button>
+        </div>
+        <p class="hint">Tip: 1500 = 25 min, 3000 = 50 min</p>
+      </section>
+
+      <footer>
+        <p>Made with ☕ by Szymon</p>
+      </footer>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.settings-panel {
+.settings-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: #f5f5f5;
-  color: #333;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
+  justify-content: center;
   z-index: 1000;
-  padding: 10px;
+  padding: 20px;
   box-sizing: border-box;
-  font-size: 14px;
-  font-weight: 500;
-  font-family: "Raleway", sans-serif;
-  font-optical-sizing: auto;
-  line-height: 22px;
+}
+
+.settings-panel {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 360px;
+  max-height: 90vh;
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  font-family: "Inter", "Raleway", -apple-system, sans-serif;
 }
 
 .settings-panel::-webkit-scrollbar {
   display: none;
 }
 
-h2 {
-  margin: 10px 0px;
-}
-
-.info p {
-    margin: 0px;
-    padding: 0px;
-    display: flex;
-    flex-direction: column;
-}
-
-.info p ul li::marker {
-    color: #d1d0d0;
-    font-weight: 600;
-    font-size: 16px;
-}
-
-.info ul {
-    margin-top: 3px;
-    margin-bottom: 3px;
-    padding-left: 15px;
-}
-
-.info,
-.setting{
-    background-color: white;
-    padding: 20px;
-    border-radius: 10px;
-    color: #4b4b4e;
-}
-
-.setting {
+header {
   display: flex;
-  gap: 10px;
-  align-items: center;
-    justify-content: space-between;
-  width: -webkit-fill-available;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.time-setting {
-    display: flex;
-    gap: 5px;
-    align-items: center;
-    width: -webkit-fill-available;
+.header-content h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
 }
 
-input {
-  padding: 7px;
-  font-size: 16px;
-  width: 60px;
-  border: 2px solid #f5f5f5;
-  border-radius: 10px;
-  font-size: 14px; 
+.version {
+  font-size: 12px;
+  color: #888;
   font-weight: 500;
-  font-family: "Raleway", sans-serif;
-  font-optical-sizing: auto;
-  line-height: 22px;
-  color: #4b4b4e;
-  transition: 0.4s ease-in-out;
-}
-
-input:focus {
-  outline: none;
-  border-color: #d1d0d0;
-}
-
-button {
-  padding: 8px 20px;
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: 15px;
-  background-color: #88d388;
-  border: none;
-  color: white;
-  font-weight: 600;
-  transition: opacity 0.4s ease-in-out;
-  font-family: "Raleway", sans-serif;
-  font-optical-sizing: auto;
-  line-height: 22px;
-}
-
-button:hover {
-  opacity: 0.8;
 }
 
 .close-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: none;
+  background: #f5f5f5;
   border: none;
   cursor: pointer;
-  padding: 0px;
+  padding: 8px;
+  border-radius: 10px;
+  color: #666;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  background: #fee2e2;
+  color: #ef4444;
+  transform: scale(1.05);
+}
+
+.close-btn:active {
+  transform: scale(0.95);
+}
+
+.card {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.card:last-of-type {
+  border-bottom: none;
+}
+
+h3 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.feature-icon {
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.feature p {
+  margin: 0;
+  font-size: 14px;
+  color: #444;
+  line-height: 1.5;
+}
+
+.time-input-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.input-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #f8f8f8;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.input-wrapper:focus-within {
+  border-color: #88d388;
+  background: #fff;
+}
+
+input[type="number"] {
+  width: 100%;
+  padding: 12px 16px;
+  padding-right: 70px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #1a1a1a;
+  background: transparent;
+  border: none;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.input-suffix {
+  position: absolute;
+  right: 16px;
+  font-size: 13px;
+  color: #999;
+  font-weight: 500;
+}
+
+.save-btn {
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #88d388 0%, #6bc46b 100%);
+  border: none;
+  color: white;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.save-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(136, 211, 136, 0.4);
+}
+
+.save-btn:active {
+  transform: translateY(0);
+}
+
+.save-btn.saved {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.hint {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #999;
+}
+
+footer {
+  padding: 16px 24px;
+  text-align: center;
+}
+
+footer p {
+  margin: 0;
+  font-size: 12px;
+  color: #bbb;
 }
 </style>

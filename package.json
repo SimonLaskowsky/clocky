@@ -16,7 +16,7 @@
       ]
     },
     "mac": {
-      "target": "dmg",
+      "target": "dir",
       "icon": "icon.icns"
     },
     "files": [
@@ -65,8 +65,8 @@
     "@electron-forge/plugin-fuses": "^7.4.0",
     "@electron/fuses": "^1.8.0",
     "@vitejs/plugin-vue": "^5.0.4",
-    "electron": "^33.0.1",
-    "electron-builder": "^24.13.3",
+    "electron": "^35.1.4",
+    "electron-builder": "^26.0.12",
     "vite": "^5.2.8"
   }
 }

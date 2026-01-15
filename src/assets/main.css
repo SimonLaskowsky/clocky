@@ -208,26 +208,53 @@ main {
   top: 0;
   left: 0;
   width: 100%;
-  height: 30px;
+  height: 50px;
   background-color: transparent;
   color: #333;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  -webkit-app-region: drag; /* Umożliwia przeciąganie okna */
+  align-items: flex-start;
+  -webkit-app-region: drag;
   opacity: 0;
-   !important
+  padding: 0 4px;
+  box-sizing: border-box;
+  z-index: 100;
+  transition: opacity 0.3s ease;
 }
 
 #menu-btn, #close-btn {
-  background: none;
+  background: rgba(255, 255, 255, 0.9);
   border: none;
-  color: #333;
+  color: #555;
   font-size: 16px;
   cursor: pointer;
-  -webkit-app-region: no-drag; /* Przyciski nie blokują przeciągania */
-  padding: 0px 10px;
-  padding-top: 18px;
+  -webkit-app-region: no-drag;
+  padding: 8px;
+  margin-top: 8px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+#menu-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: #333;
+}
+
+#close-btn:hover {
+  background: #fee2e2;
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+#menu-btn:active, #close-btn:active {
+  transform: scale(0.95);
 }
 
 .bmc-btn-container {

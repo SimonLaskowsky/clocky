@@ -15,7 +15,6 @@ let win;
 let timer;
 let timerValue;
 let pauseTime;
-let isTransparent = false;
 
 const soundFilePath = path.join(__dirname, "metal-pipe.mp3");
 const iconFilePath = path.join(__dirname, "icon.png");
@@ -25,24 +24,18 @@ function createWindow() {
   win = new BrowserWindow({
     width: 400,
     height: 400,
+    minWidth: 250,
+    minHeight: 250,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
     },
     autoHideMenuBar: true,
-    transparent: isTransparent,
     frame: false,
-    resizable: false,
+    resizable: true,
   });
 
   win.loadFile("dist/index.html");
-  win.setOverlayIcon(iconFilePath, "Overlay Icon Description");
-  win.webContents.openDevTools();
-
-  // Wysyłaj stan transparentności po załadowaniu strony
-  win.webContents.on('did-finish-load', () => {
-    win.webContents.send('transparency-state', isTransparent);
-  });
 }
 
 app.whenReady().then(() => {
@@ -100,6 +93,7 @@ ipcMain.on("send-notification", (event, title, body) => {
 });
 
 ipcMain.on("start-timer", (event, startValue) => {
+  console.log('MAIN: Received start-timer with value:', startValue);
   timerValue = startValue;
   if (!timer) {
     timer = setInterval(() => {
@@ -152,13 +146,6 @@ ipcMain.on('minimize-app', () => {
   win.minimize();
 });
 
-// Poprawione menu - brak popupu, od razu otwiera ustawienia
 ipcMain.on('show-menu', () => {
-  win.webContents.send('open-settings'); // Bezpośrednie wywołanie ustawień
-});
-
-ipcMain.on('toggle-transparency', () => {
-  isTransparent = !isTransparent;
-  win.close();
-  createWindow();
+  win.webContents.send('open-settings');
 });

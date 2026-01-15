@@ -1,69 +1,67 @@
 <script setup>
-import { ref, nextTick, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import Timer from "./components/Timer.vue";
 import SettingsPanel from "./components/SettingsPanel.vue";
 import { useTimerStore } from "@/stores/timerStore";
 const { ipcRenderer } = window.api;
 
-const areNotificationsOn = ref(false);
 const timer = ref(null);
-const timerPause = ref(false);
-const timerHistory = ref([]);
-const currentSessionIndex = ref(null);
 const timerStore = useTimerStore();
 const showSettings = ref(false);
 
-const iconColor = ref('#333'); // Domyślny kolor ikon (gdy tło jest nieprzezroczyste)
+const handleMouseDown = (event) => {
+  if (event.button === 2) {
+    ipcRenderer.send("right-mouse-down");
+  }
+};
+
+const handleMouseUp = (event) => {
+  if (event.button === 2) {
+    ipcRenderer.send("right-mouse-up");
+  }
+};
+
+const handleMouseMove = (event) => {
+  ipcRenderer.send("mouse-move", {
+    x: event.movementX,
+    y: event.movementY,
+  });
+};
+
+const handleCloseClick = () => {
+  ipcRenderer.send('close-app');
+};
+
+const handleMenuClick = (event) => {
+  ipcRenderer.send('show-menu', { x: event.x, y: event.y });
+};
 
 onMounted(() => {
-  window.addEventListener("mousedown", (event) => {
-    if (event.button === 2) {
-      ipcRenderer.send("right-mouse-down");
-    }
-  });
+  window.addEventListener("mousedown", handleMouseDown);
+  window.addEventListener("mouseup", handleMouseUp);
+  window.addEventListener("mousemove", handleMouseMove);
 
-  window.addEventListener("mouseup", (event) => {
-    if (event.button === 2) {
-      ipcRenderer.send("right-mouse-up");
-    }
-  });
+  document.getElementById('close-btn').addEventListener('click', handleCloseClick);
+  document.getElementById('menu-btn').addEventListener('click', handleMenuClick);
 
-  window.addEventListener("mousemove", (event) => {
-    ipcRenderer.send("mouse-move", {
-      x: event.movementX,
-      y: event.movementY,
-    });
-  });
-
-  document.getElementById('close-btn').addEventListener('click', () => {
-    ipcRenderer.send('close-app');
-  });
-
-  document.getElementById('menu-btn').addEventListener('click', (event) => {
-    ipcRenderer.send('show-menu', { x: event.x, y: event.y });
-  });
-
-  // Nasłuchiwanie na otwarcie ustawień
   ipcRenderer.on('open-settings', () => {
     showSettings.value = true;
-  });
-
-  // Nasłuchiwanie na zmianę stanu transparentności
-  ipcRenderer.on('transparency-state', (event, isTransparent) => {
-    iconColor.value = isTransparent ? 'white' : '#333';
-    console.log(isTransparent);
   });
 });
 
 onUnmounted(() => {
-  window.removeAllListeners("mousedown");
-  window.removeAllListeners("mouseup");
-  window.removeAllListeners("mousemove");
+  window.removeEventListener("mousedown", handleMouseDown);
+  window.removeEventListener("mouseup", handleMouseUp);
+  window.removeEventListener("mousemove", handleMouseMove);
+
+  const closeBtn = document.getElementById('close-btn');
+  const menuBtn = document.getElementById('menu-btn');
+  if (closeBtn) closeBtn.removeEventListener('click', handleCloseClick);
+  if (menuBtn) menuBtn.removeEventListener('click', handleMenuClick);
+
   ipcRenderer.removeAllListeners('open-settings');
-  ipcRenderer.removeAllListeners('transparency-state');
 });
 
-// Reszta funkcji bez zmian
 const closeSettings = () => {
   showSettings.value = false;
 };
@@ -71,59 +69,23 @@ const closeSettings = () => {
 const sendBreakNotification = () => {
   if (!timerStore.areNotificationsOn) return;
   window.electron.sendNotification(
-    "Minął odliczany czas!",
-    "Sugeruje zrobienie sobie krótkiej przerwy, jak tylko wrócisz do pracy automatucznie zaczne odliczać czas ponownie 🥰"
+    "Time's up!",
+    "Take a short break. The timer will restart automatically when you return."
   );
-};
-
-const handleUserStaredWorking = () => {
-  const startTime = new Date();
-  timerHistory.value.push({ startTime });
-};
-
-const handleStatusChange = (newStatus) => {
-  timerHistory.value.push({
-    startTime: new Date(),
-    status: newStatus,
-  });
-  currentSessionIndex.value++;
-  scrollToTop();
-};
-
-const scrollToTop = () => {
-  nextTick(() => {
-    const panel = document.querySelector(".panel-info");
-    if (panel) {
-      panel.scrollTop = -1000 * currentSessionIndex.value;
-    }
-  });
-};
-
-const togglePause = () => {
-  if (areNotificationsOn.value) timerPause.value = !timerPause.value;
-};
-
-const handlePanelClick = (event) => {
-  event.currentTarget.classList.toggle("slide-down");
-};
-
-const handleInnerElementClick = (event) => {
-  event.stopPropagation();
 };
 </script>
 
 <template>
   <div id="titlebar">
-    <button id="menu-btn">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <line x1="4" y1="8" x2="20" y2="8" :stroke="iconColor" stroke-width="1" stroke-linecap="round"/>
-        <line x1="4" y1="16" x2="16" y2="16" :stroke="iconColor" stroke-width="1" stroke-linecap="round"/>
+    <button id="menu-btn" title="Settings">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+        <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
-    <button id="close-btn">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <line x1="6" y1="6" x2="18" y2="18" :stroke="iconColor" stroke-width="1" stroke-linecap="round"/>
-        <line x1="6" y1="18" x2="18" y2="6" :stroke="iconColor" stroke-width="1" stroke-linecap="round"/>
+    <button id="close-btn" title="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
       </svg>
     </button>
   </div>
@@ -131,8 +93,6 @@ const handleInnerElementClick = (event) => {
     <div class="timer-wrapper">
       <Timer
         ref="timer"
-        @statusChange="handleStatusChange"
-        @userStartedWorking="handleUserStaredWorking"
         @sendBreakNotification="sendBreakNotification"
       />
     </div>

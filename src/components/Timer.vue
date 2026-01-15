@@ -5,8 +5,7 @@ const { ipcRenderer } = window.api;
 import { Vue3Spline } from "vue3-spline";
 
 const inputTime = ref("25:00");
-const userInputTime = ref(1500);
-const emit = defineEmits(["statusChange", "sendBreakNotification"]);
+const emit = defineEmits(["sendBreakNotification"]);
 const status = ref("Work");
 const timerStore = useTimerStore();
 const isCountingDown = ref(false);
@@ -14,21 +13,18 @@ const delayBeforeBreak = ref(false);
 const splineApp = ref(null);
 
 onMounted(() => {
-  // Odczyt zapisanej wartości czasu z localStorage
-  const savedTime = localStorage.getItem('timerValue');
-  if (savedTime) {
-    userInputTime.value = parseInt(savedTime, 10);
-    updateTimerDisplay(userInputTime.value);
-  }
+  updateTimerDisplay(timerStore.workTime);
 
   ipcRenderer.on("mouse-move", (mousePosition) => {
     if (!delayBeforeBreak.value) {
       handleMouseMove();
     }
   });
+
   ipcRenderer.on("timer-tick", (timerValue) => {
     updateTimerDisplay(timerValue);
   });
+
   ipcRenderer.on("timer-done", () => {
     handleTimerDone();
   });
@@ -78,18 +74,15 @@ const handleTimerDone = () => {
 
 const changeStatusToWork = () => {
   status.value = "Work";
-  emit("statusChange", status.value);
   splineApp.value?.setVariable("Status", status.value);
-  ipcRenderer.send("start-timer", userInputTime.value);
+  ipcRenderer.send("start-timer", timerStore.workTime);
   isCountingDown.value = true;
 };
 
 const changeStatusToBreak = () => {
   isCountingDown.value = false;
   status.value = "Break";
-  emit("statusChange", status.value);
   splineApp.value?.setVariable("Status", status.value);
-  ipcRenderer.send("start-break");
 };
 
 const updateTimerDisplay = (timerValue) => {
@@ -98,17 +91,8 @@ const updateTimerDisplay = (timerValue) => {
     const seconds = (timerValue % 60).toString().padStart(2, "0");
     inputTime.value = `${minutes}:${seconds}`;
     splineApp.value?.setVariable("TimerValue", inputTime.value);
-  } else {
-    console.error("splineApp is not initialized");
   }
 };
-
-// Zapisz czas do localStorage po zmianie w panelu
-ipcRenderer.on('start-timer', (event, newTime) => {
-  userInputTime.value = newTime;
-  localStorage.setItem('timerValue', newTime);
-  updateTimerDisplay(newTime);
-});
 </script>
 
 <template>
