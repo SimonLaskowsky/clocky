@@ -215,7 +215,6 @@ main {
   justify-content: space-between;
   align-items: flex-start;
   -webkit-app-region: drag;
-  opacity: 0;
   padding: 0 4px;
   box-sizing: border-box;
   z-index: 100;
