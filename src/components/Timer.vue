@@ -9,15 +9,33 @@ const emit = defineEmits(["sendBreakNotification"]);
 const status = ref("Work");
 const timerStore = useTimerStore();
 const isCountingDown = ref(false);
-const delayBeforeBreak = ref(false);
 const splineApp = ref(null);
+
+// Break timer (counts up)
+let breakTimer = null;
+let breakSeconds = 0;
+
+// Await timer (counts down from 30)
+let awaitTimer = null;
+let awaitSeconds = 30;
 
 onMounted(() => {
   updateTimerDisplay(timerStore.workTime);
 
   ipcRenderer.on("mouse-move", (mousePosition) => {
-    if (!delayBeforeBreak.value) {
-      handleMouseMove();
+    handleActivity();
+  });
+
+  ipcRenderer.on("idle-state-change", ({ isIdle, idleDuration }) => {
+    timerStore.setIdleState(isIdle);
+
+    if (isIdle && timerStore.awaitingBreak) {
+      // User went idle after work ended = confirmed on break
+      stopAwaitTimer();
+      timerStore.setAwaitingBreak(false);
+      timerStore.setBreakState(true);
+      changeStatusToBreak();
+      startBreakTimer();
     }
   });
 
@@ -43,33 +61,68 @@ onMounted(() => {
 
 onUnmounted(() => {
   ipcRenderer.removeAllListeners("mouse-move");
+  ipcRenderer.removeAllListeners("idle-state-change");
   ipcRenderer.removeAllListeners("timer-tick");
   ipcRenderer.removeAllListeners("timer-done");
+  stopAwaitTimer();
+  stopBreakTimer();
 });
 
-const handleMouseMove = () => {
-  if (
+const handleActivity = () => {
+  if (timerStore.isOnBreak) {
+    // User returned from break - stop break timer and restart work
+    stopBreakTimer();
+    timerStore.setBreakState(false);
+    changeStatusToWork();
+  } else if (
     timerStore.areNotificationsOn &&
     !isCountingDown.value &&
-    !timerStore.timerPause
+    !timerStore.timerPause &&
+    !timerStore.awaitingBreak
   ) {
+    // Original behavior - restart work if in break status
     changeStatusToWork();
   }
 };
 
-const handleTimerDone = () => {
-  if (status.value === "Work") {
-    timerStore.timerPause = true;
-    delayBeforeBreak.value = true;
-    emit("sendBreakNotification");
-    setTimeout(() => {
-      delayBeforeBreak.value = false;
-      timerStore.timerPause = false;
-      changeStatusToBreak();
-    }, 10000);
-  } else {
-    changeStatusToWork();
+const startBreakTimer = () => {
+  breakSeconds = 0;
+  updateBreakDisplay();
+  breakTimer = setInterval(() => {
+    breakSeconds++;
+    updateBreakDisplay();
+  }, 1000);
+};
+
+const stopBreakTimer = () => {
+  if (breakTimer) {
+    clearInterval(breakTimer);
+    breakTimer = null;
   }
+  breakSeconds = 0;
+};
+
+const updateBreakDisplay = () => {
+  if (splineApp.value) {
+    const minutes = Math.floor(breakSeconds / 60).toString().padStart(2, "0");
+    const seconds = (breakSeconds % 60).toString().padStart(2, "0");
+    inputTime.value = `${minutes}:${seconds}`;
+    splineApp.value?.setVariable("TimerValue", inputTime.value);
+  }
+};
+
+const handleTimerDone = () => {
+  console.log("Timer done! Status:", status.value);
+  if (status.value === "Work") {
+    // Work timer ended - notify and wait for user to go idle
+    console.log("Emitting sendBreakNotification");
+    emit("sendBreakNotification");
+    timerStore.setAwaitingBreak(true);
+    changeStatusToAwaitingBreak();
+    // No more hardcoded delay - we wait for actual idle detection
+  }
+  // Note: Break doesn't have a timer anymore
+  // User returns when they're ready, detected via activity
 };
 
 const changeStatusToWork = () => {
@@ -77,6 +130,40 @@ const changeStatusToWork = () => {
   splineApp.value?.setVariable("Status", status.value);
   ipcRenderer.send("start-timer", timerStore.workTime);
   isCountingDown.value = true;
+};
+
+const changeStatusToAwaitingBreak = () => {
+  isCountingDown.value = false;
+  status.value = "Await";
+  splineApp.value?.setVariable("Status", status.value);
+  startAwaitTimer();
+};
+
+const startAwaitTimer = () => {
+  awaitSeconds = 30;
+  updateAwaitDisplay();
+  awaitTimer = setInterval(() => {
+    awaitSeconds--;
+    updateAwaitDisplay();
+    if (awaitSeconds <= 0) {
+      stopAwaitTimer();
+    }
+  }, 1000);
+};
+
+const stopAwaitTimer = () => {
+  if (awaitTimer) {
+    clearInterval(awaitTimer);
+    awaitTimer = null;
+  }
+};
+
+const updateAwaitDisplay = () => {
+  if (splineApp.value) {
+    const minutes = Math.floor(awaitSeconds / 60).toString().padStart(2, "0");
+    const seconds = (awaitSeconds % 60).toString().padStart(2, "0");
+    splineApp.value?.setVariable("TimerValue", `${minutes}:${seconds}`);
+  }
 };
 
 const changeStatusToBreak = () => {

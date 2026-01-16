@@ -7,14 +7,20 @@ const {
   Tray,
   Menu,
   nativeImage,
+  powerMonitor,
 } = require("electron/main");
 
 const path = require("node:path");
 const sound = require("sound-play");
+
 let win;
 let timer;
 let timerValue;
 let pauseTime;
+
+// Activity tracking using Electron's built-in powerMonitor
+let isCurrentlyIdle = false;
+const IDLE_THRESHOLD = 30; // 30 seconds
 
 const soundFilePath = path.join(__dirname, "metal-pipe.mp3");
 const iconFilePath = path.join(__dirname, "icon.png");
@@ -60,10 +66,11 @@ app.on("window-all-closed", () => {
   }
 });
 
+// Mouse position tracking for existing functionality
 let lastMousePosition = { x: null, y: null };
 setInterval(() => {
   if (win) {
-    let currentMousePosition = screen.getCursorScreenPoint();
+    const currentMousePosition = screen.getCursorScreenPoint();
     if (
       lastMousePosition.x !== currentMousePosition.x ||
       lastMousePosition.y !== currentMousePosition.y
@@ -73,6 +80,24 @@ setInterval(() => {
     }
   }
 }, 100);
+
+// Idle detection using Electron's powerMonitor (checks system-wide idle time)
+setInterval(() => {
+  if (win) {
+    const idleSeconds = powerMonitor.getSystemIdleTime();
+    const shouldBeIdle = idleSeconds >= IDLE_THRESHOLD;
+
+    if (shouldBeIdle && !isCurrentlyIdle) {
+      // Just became idle
+      isCurrentlyIdle = true;
+      win.webContents.send("idle-state-change", { isIdle: true, idleDuration: idleSeconds * 1000 });
+    } else if (!shouldBeIdle && isCurrentlyIdle) {
+      // User returned from idle
+      isCurrentlyIdle = false;
+      win.webContents.send("idle-state-change", { isIdle: false, idleDuration: 0 });
+    }
+  }
+}, 1000);
 
 let notificationsPermissionGranted = true;
 ipcMain.on("request-notification-permission", (event) => {

@@ -67,6 +67,7 @@ const closeSettings = () => {
 };
 
 const sendBreakNotification = () => {
+  console.log("sendBreakNotification called, notifications on:", timerStore.areNotificationsOn);
   if (!timerStore.areNotificationsOn) return;
   window.electron.sendNotification(
     "Time's up!",
